@@ -14,12 +14,20 @@ const SECTIONS = [
   { id: 'account', label: 'Account & security' },
 ]
 
+const EMPLOYER_SECTIONS = [
+  { id: 'personal', label: 'You & your organization' },
+  { id: 'account', label: 'Account & security' },
+]
+
 const COUNTRIES = [
   ['in', 'India'], ['us', 'United States'], ['gb', 'United Kingdom'], ['ca', 'Canada'], ['au', 'Australia'],
   ['de', 'Germany'], ['nl', 'Netherlands'], ['sg', 'Singapore'], ['ae', 'UAE'], ['fr', 'France'], ['nz', 'New Zealand'],
 ]
 
-export default function Profile({ section, setSection, actions, notify, onChanged, go, onUserRenamed, onLoggedOut }) {
+export default function Profile({ section: requested, setSection, actions, notify, onChanged, go, onUserUpdated,
+                                  onLoggedOut, employer = false }) {
+  const sections = employer ? EMPLOYER_SECTIONS : SECTIONS
+  const section = sections.some((s) => s.id === requested) ? requested : sections[0].id
   const [profile, setProfile] = useState(null)
   const [saved, setSaved] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -44,8 +52,8 @@ export default function Profile({ section, setSection, actions, notify, onChange
       const p = await api.saveProfile(profile)
       setProfile(p)
       setSaved(p)
-      onUserRenamed(p.name)
-      notify('Profile saved. Your job matches were updated.')
+      onUserUpdated(p)
+      notify(employer ? 'Profile saved' : 'Profile saved. Your job matches were updated.')
       onChanged()
     } catch (e) { actions.error(e) } finally { setBusy(false) }
   }
@@ -71,38 +79,53 @@ export default function Profile({ section, setSection, actions, notify, onChange
         <div>
           <h1>{profile.name}</h1>
           <p className="muted">
-            {profile.headline || 'Add a headline in Career'}{profile.currentCity ? ` · ${profile.currentCity}` : ''}
+            {employer
+              ? [profile.headline, profile.organization].filter(Boolean).join(' at ')
+              : profile.headline || 'Add a headline in Career'}
+            {profile.currentCity ? ` · ${profile.currentCity}` : ''}
           </p>
           <p className="muted small">{profile.email} · member since {new Date(profile.memberSince).toLocaleDateString()}</p>
         </div>
-        <div className="profile-progress">
+        {!employer && <div className="profile-progress">
           <div className="progress"><div style={{ width: `${(completion / 7) * 100}%` }} /></div>
           <span className="small muted">Profile {Math.round((completion / 7) * 100)}% complete</span>
-        </div>
+        </div>}
       </header>
 
       <div className="profile-layout">
         <nav className="section-nav" aria-label="Profile sections">
-          {SECTIONS.map((s) => (
+          {sections.map((s) => (
             <button key={s.id} className={section === s.id ? 'active' : ''} onClick={() => setSection(s.id)}>{s.label}</button>
           ))}
         </nav>
 
         <div className="section-body">
           {section === 'personal' && (
-            <Card title="Personal details" desc="How recruiters can reach you. Only you can see this.">
+            <Card title={employer ? 'You & your organization' : 'Personal details'}
+                  desc={employer ? 'Your organization’s name is shown on every job you post.' : 'How recruiters can reach you. Only you can see this.'}>
               <div className="grid-2">
+                {employer && field('organization', 'Organization', { required: true, placeholder: 'Company name' })}
+                {employer && field('headline', 'Your job title', { placeholder: 'HR Manager' })}
                 {field('name', 'Full name', { required: true })}
                 <label className="field"><span>Email</span><input value={profile.email} disabled /><small className="help">Used to log in</small></label>
                 {field('phone', 'Phone number', { type: 'tel', placeholder: '+91 98765 43210' })}
                 {field('currentCity', 'Current city', { placeholder: 'Bangalore' })}
               </div>
-              <div className="grid-3">
-                {field('linkedinUrl', 'LinkedIn profile', { type: 'url', placeholder: 'https://linkedin.com/in/…' })}
-                {field('githubUrl', 'GitHub', { type: 'url', placeholder: 'https://github.com/…' })}
-                {field('portfolioUrl', 'Portfolio / website', { type: 'url', placeholder: 'https://…' })}
-              </div>
-              {field('about', 'About me', { textarea: true, placeholder: 'A short summary about you and what you are looking for' })}
+              {employer ? (
+                <>
+                  {field('portfolioUrl', 'Company website', { type: 'url', placeholder: 'https://…' })}
+                  {field('about', 'About the organization', { textarea: true, placeholder: 'What your organization does' })}
+                </>
+              ) : (
+                <>
+                  <div className="grid-3">
+                    {field('linkedinUrl', 'LinkedIn profile', { type: 'url', placeholder: 'https://linkedin.com/in/…' })}
+                    {field('githubUrl', 'GitHub', { type: 'url', placeholder: 'https://github.com/…' })}
+                    {field('portfolioUrl', 'Portfolio / website', { type: 'url', placeholder: 'https://…' })}
+                  </div>
+                  {field('about', 'About me', { textarea: true, placeholder: 'A short summary about you and what you are looking for' })}
+                </>
+              )}
             </Card>
           )}
 
@@ -160,14 +183,17 @@ export default function Profile({ section, setSection, actions, notify, onChange
 
           {section === 'clipper' && <ClipperSetup />}
 
-          {section === 'account' && <Account actions={actions} notify={notify} profile={profile} onLoggedOut={onLoggedOut} />}
+          {section === 'account' && (
+            <Account actions={actions} notify={notify} profile={profile} onLoggedOut={onLoggedOut} employer={employer} />
+          )}
 
           {['personal', 'career', 'preferences'].includes(section) && (
             <div className={dirty ? 'save-bar visible' : 'save-bar'}>
               <span>{dirty ? 'You have unsaved changes' : 'All changes saved'}</span>
               <div className="actions">
                 {dirty && <button className="btn ghost" onClick={() => setProfile(saved)} disabled={busy}>Discard</button>}
-                <button className="btn primary" onClick={save} disabled={!dirty || busy || !profile.name?.trim()}>
+                <button className="btn primary" onClick={save}
+                        disabled={!dirty || busy || !profile.name?.trim() || (employer && !profile.organization?.trim())}>
                   {busy ? 'Saving…' : 'Save changes'}
                 </button>
               </div>
@@ -225,7 +251,7 @@ function ClipperSetup() {
   )
 }
 
-function Account({ actions, notify, onLoggedOut }) {
+function Account({ actions, notify, onLoggedOut, employer }) {
   const [pw, setPw] = useState({ current: '', next: '', confirm: '' })
   const [deletePw, setDeletePw] = useState('')
   const [busy, setBusy] = useState('')
@@ -244,7 +270,8 @@ function Account({ actions, notify, onLoggedOut }) {
 
   const remove = async (e) => {
     e.preventDefault()
-    if (!confirm('Delete your account, resume, jobs and applications forever? This cannot be undone.')) return
+    const what = employer ? 'your account, all your job posts and their applicants' : 'your account, resume, jobs and applications'
+    if (!confirm(`Delete ${what} forever? This cannot be undone.`)) return
     setBusy('del')
     try {
       await api.deleteAccount(deletePw)
@@ -271,7 +298,11 @@ function Account({ actions, notify, onLoggedOut }) {
       <section className="card form-card danger-zone">
         <div className="form-card-head">
           <h2>Delete account</h2>
-          <p className="muted small">Removes your profile, resume, jobs and applications permanently.</p>
+          <p className="muted small">
+            {employer
+              ? 'Removes your profile, every job you posted and all applications to them permanently.'
+              : 'Removes your profile, resume, jobs and applications permanently.'}
+          </p>
         </div>
         <form className="row" onSubmit={remove}>
           <input type="password" placeholder="Enter your password to confirm" required value={deletePw}

@@ -10,7 +10,9 @@ import com.guru.jobboard.dto.ChangePasswordRequest;
 import com.guru.jobboard.dto.ProfileDto;
 import com.guru.jobboard.entity.Preference;
 import com.guru.jobboard.entity.User;
+import com.guru.jobboard.repository.JobApplicationRepository;
 import com.guru.jobboard.repository.JobRepository;
+import com.guru.jobboard.repository.PostingRepository;
 import com.guru.jobboard.repository.PreferenceRepository;
 import com.guru.jobboard.repository.RemovedJobRepository;
 import com.guru.jobboard.repository.UserRepository;
@@ -25,10 +27,14 @@ public class ProfileService {
     private final RemovedJobRepository removedJobs;
     private final JobSyncService syncService;
     private final PasswordEncoder encoder;
+    private final PostingRepository postings;
+    private final JobApplicationRepository applications;
 
     public ProfileService(UserRepository users, PreferenceService preferences, PreferenceRepository preferenceRepository,
                           JobRepository jobs, RemovedJobRepository removedJobs, JobSyncService syncService,
-                          PasswordEncoder encoder) {
+                          PasswordEncoder encoder, PostingRepository postings, JobApplicationRepository applications) {
+        this.postings = postings;
+        this.applications = applications;
         this.users = users;
         this.preferences = preferences;
         this.preferenceRepository = preferenceRepository;
@@ -56,9 +62,23 @@ public class ProfileService {
         u.setCurrentCompany(clean(dto.currentCompany()));
         u.setExpectedSalary(clean(dto.expectedSalary()));
         u.setNoticePeriod(clean(dto.noticePeriod()));
+        if (u.isEmployer()) {
+            String organization = clean(dto.organization());
+            if (organization == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Enter your organization's name");
+            }
+            if (!organization.equals(u.getOrganization())) {
+                u.setOrganization(organization);
+                postings.renameOrganization(userId, organization);
+            }
+        }
         users.save(u);
 
         Preference p = preferences.get(userId);
+        if (u.isEmployer()) {
+            // Employers don't search for jobs, so their job-search settings are left alone.
+            return ProfileDto.from(u, p);
+        }
         p.setDesiredRole(clean(dto.desiredRole()));
         p.setExperienceYears(dto.experienceYears());
         p.setKeywords(dto.keywords() == null ? "" : dto.keywords().trim());
@@ -89,6 +109,12 @@ public class ProfileService {
         User u = user(userId);
         if (password == null || !encoder.matches(password, u.getPasswordHash())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password is wrong");
+        }
+        if (u.isEmployer()) {
+            applications.deleteAllForEmployer(userId);
+            postings.findByEmployerIdOrderByCreatedAtDesc(userId).forEach(postings::delete);
+        } else {
+            applications.deleteAllForSeeker(userId);
         }
         jobs.deleteAllForUser(userId);
         removedJobs.deleteAllForUser(userId);

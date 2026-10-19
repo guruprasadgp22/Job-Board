@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.guru.jobboard.config.AppProperties;
+import com.guru.jobboard.entity.Role;
 import com.guru.jobboard.entity.User;
 
 import io.jsonwebtoken.Claims;
@@ -48,6 +49,7 @@ public class JwtService {
         return Jwts.builder()
                 .subject(String.valueOf(user.getId()))
                 .claim("email", user.getEmail())
+                .claim("role", user.getRole().name())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plus(validity)))
                 .signWith(key)
@@ -58,7 +60,10 @@ public class JwtService {
     public AuthUser parse(String token) {
         try {
             Claims claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
-            return new AuthUser(Long.valueOf(claims.getSubject()), claims.get("email", String.class));
+            // Tokens issued before roles existed have no role claim; those users are job seekers.
+            String role = claims.get("role", String.class);
+            return new AuthUser(Long.valueOf(claims.getSubject()), claims.get("email", String.class),
+                    role == null ? Role.SEEKER : Role.valueOf(role));
         } catch (JwtException | IllegalArgumentException e) {
             return null;
         }

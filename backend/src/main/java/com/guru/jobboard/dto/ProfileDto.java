@@ -3,6 +3,7 @@ package com.guru.jobboard.dto;
 import java.time.Instant;
 
 import com.guru.jobboard.entity.Preference;
+import com.guru.jobboard.entity.Role;
 import com.guru.jobboard.entity.User;
 
 import jakarta.validation.constraints.Max;
@@ -15,6 +16,8 @@ public record ProfileDto(
         // Personal
         @NotBlank @Size(max = 100) String name,
         String email,
+        /** Employers only. */
+        @Size(max = 150) String organization,
         @Size(max = 30) String phone,
         @Size(max = 100) String currentCity,
         @Size(max = 300) String linkedinUrl,
@@ -37,13 +40,14 @@ public record ProfileDto(
         @Min(0) @Max(100) int minScore,
         // Read-only info
         Instant memberSince,
-        Instant lastSyncAt) {
+        Instant lastSyncAt,
+        Role role) {
 
     public static ProfileDto from(User u, Preference p) {
-        return new ProfileDto(u.getName(), u.getEmail(), u.getPhone(), u.getCurrentCity(), u.getLinkedinUrl(),
+        return new ProfileDto(u.getName(), u.getEmail(), u.getOrganization(), u.getPhone(), u.getCurrentCity(), u.getLinkedinUrl(),
                 u.getGithubUrl(), u.getPortfolioUrl(), u.getAbout(), u.getHeadline(), u.getCurrentCompany(),
                 p.getExperienceYears(), u.getExpectedSalary(), u.getNoticePeriod(), p.getDesiredRole(),
                 p.getKeywords(), p.getExcludeKeywords(), p.getLocation(), p.getCountry(), p.isRemoteOnly(),
-                p.getMinScore(), u.getCreatedAt(), p.getLastSyncAt());
+                p.getMinScore(), u.getCreatedAt(), p.getLastSyncAt(), u.getRole());
     }
 }

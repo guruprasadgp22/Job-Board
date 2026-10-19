@@ -4,6 +4,8 @@ import java.time.Instant;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -26,6 +28,15 @@ public class User {
 
     @Column(name = "password_hash", nullable = false, length = 100)
     private String passwordHash;
+
+    /** Null for accounts created before roles existed; those are job seekers. */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private Role role;
+
+    /** Employers only: the organization they post jobs for. */
+    @Column(length = 150)
+    private String organization;
 
     // Profile
     @Column(length = 30)
@@ -69,6 +80,11 @@ public class User {
     public void setEmail(String email) { this.email = email; }
     public String getPasswordHash() { return passwordHash; }
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
+    public Role getRole() { return role == null ? Role.SEEKER : role; }
+    public void setRole(Role role) { this.role = role; }
+    public boolean isEmployer() { return getRole() == Role.EMPLOYER; }
+    public String getOrganization() { return organization; }
+    public void setOrganization(String organization) { this.organization = organization; }
     public Instant getCreatedAt() { return createdAt; }
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }

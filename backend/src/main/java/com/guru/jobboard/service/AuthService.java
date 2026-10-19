@@ -13,6 +13,7 @@ import com.guru.jobboard.dto.AuthResponse;
 import com.guru.jobboard.dto.LoginRequest;
 import com.guru.jobboard.dto.RegisterRequest;
 import com.guru.jobboard.dto.UserDto;
+import com.guru.jobboard.entity.Role;
 import com.guru.jobboard.entity.User;
 import com.guru.jobboard.repository.UserRepository;
 import com.guru.jobboard.security.JwtService;
@@ -44,12 +45,21 @@ public class AuthService {
         if (users.existsByEmail(email)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "An account with this email already exists");
         }
+        Role role = req.role() == null ? Role.SEEKER : req.role();
+        String organization = req.organization() == null ? "" : req.organization().trim();
+        if (role == Role.EMPLOYER && organization.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Enter your organization's name");
+        }
         User user = new User();
         user.setName(req.name().trim());
         user.setEmail(email);
         user.setPasswordHash(encoder.encode(req.password()));
+        user.setRole(role);
+        user.setOrganization(role == Role.EMPLOYER ? organization : null);
         users.save(user);
-        preferences.get(user.getId());
+        if (role == Role.SEEKER) {
+            preferences.get(user.getId());
+        }
         return new AuthResponse(jwt.createToken(user), UserDto.from(user));
     }
 

@@ -4,16 +4,30 @@ import AuthPage from './components/AuthPage'
 import ClipModal from './components/ClipModal'
 import Icon from './components/Icon'
 import JobDetail from './components/JobDetail'
+import PostingDetail from './components/PostingDetail'
+import ApplicantDetail from './components/employer/ApplicantDetail'
 import Applications from './pages/Applications'
+import CompanyJobs from './pages/CompanyJobs'
 import Dashboard from './pages/Dashboard'
 import Jobs from './pages/Jobs'
 import Profile from './pages/Profile'
+import Applicants from './pages/employer/Applicants'
+import EmployerDashboard from './pages/employer/EmployerDashboard'
+import JobPosts from './pages/employer/JobPosts'
 
-const NAV = [
+const SEEKER_NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: 'home' },
+  { id: 'company-jobs', label: 'Company jobs', icon: 'building' },
   { id: 'jobs', label: 'Find jobs', icon: 'search' },
   { id: 'applications', label: 'My applications', icon: 'board' },
   { id: 'profile', label: 'Profile', icon: 'user' },
+]
+
+const EMPLOYER_NAV = [
+  { id: 'dashboard', label: 'Dashboard', icon: 'home' },
+  { id: 'postings', label: 'Job posts', icon: 'board' },
+  { id: 'applicants', label: 'Applicants', icon: 'user' },
+  { id: 'profile', label: 'Profile', icon: 'building' },
 ]
 
 const CLIP_KEY = 'jobboard.pendingClip'
@@ -38,6 +52,10 @@ export default function App() {
   const [page, setPage] = useState('dashboard')
   const [profileSection, setProfileSection] = useState('personal')
   const [openJobId, setOpenJobId] = useState(null)
+  const [openPostingId, setOpenPostingId] = useState(null) // seeker: a job posted on this site
+  const [openApplicantId, setOpenApplicantId] = useState(null) // employer
+  const [selectedPostingId, setSelectedPostingId] = useState(null) // employer: job post whose applicants are shown
+  const [startNewPosting, setStartNewPosting] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const [toast, setToast] = useState(null)
   const [finding, setFinding] = useState(false)
@@ -69,6 +87,10 @@ export default function App() {
     setToken('')
     setUser(null)
     setOpenJobId(null)
+    setOpenPostingId(null)
+    setOpenApplicantId(null)
+    setSelectedPostingId(null)
+    setPage('dashboard')
   }, [])
 
   const refresh = useCallback(() => setRefreshKey((k) => k + 1), [])
@@ -117,6 +139,10 @@ export default function App() {
   }, [notify, refresh, error])
 
   const closeJob = useCallback(() => setOpenJobId(null), [])
+  const closePosting = useCallback(() => setOpenPostingId(null), [])
+  const closeApplicant = useCallback(() => setOpenApplicantId(null), [])
+  const openEmployerPosting = useCallback((id) => { setSelectedPostingId(id); go('postings') }, [go])
+  const postJob = useCallback(() => { setSelectedPostingId(null); setStartNewPosting(true); go('postings') }, [go])
   const closeClip = useCallback(() => {
     sessionStorage.removeItem(CLIP_KEY)
     setClip(null)
@@ -132,14 +158,22 @@ export default function App() {
   if (user === undefined) return <div className="center muted">Loading…</div>
   if (user === null) return <AuthPage onAuthenticated={onAuthenticated} pendingClip={!!clip} />
 
-  const pageProps = { refreshKey, actions, onOpen: setOpenJobId, go, onFindJobs: findJobs, finding, lastSyncAt }
+  const employer = user.role === 'EMPLOYER'
+  const nav = employer ? EMPLOYER_NAV : SEEKER_NAV
+  const pageProps = { refreshKey, actions, onOpen: setOpenJobId, onOpenPosting: setOpenPostingId, go, onFindJobs: findJobs, finding, lastSyncAt }
+  const employerProps = { refreshKey, actions, go, notify, onChanged: refresh, onOpenApplicant: setOpenApplicantId }
+  const profile = (
+    <Profile section={profileSection} setSection={setProfileSection} actions={actions} notify={notify}
+             onChanged={refresh} go={go} onLoggedOut={logout} employer={employer}
+             onUserUpdated={(p) => setUser((u) => ({ ...u, name: p.name, organization: p.organization }))} />
+  )
 
   return (
     <div className="shell">
       <aside className="sidebar">
         <div className="brand"><span className="logo">JB</span> Job Board</div>
         <nav className="nav">
-          {NAV.map((n) => (
+          {nav.map((n) => (
             <button key={n.id} className={page === n.id ? 'nav-item active' : 'nav-item'} onClick={() => go(n.id)}
                     aria-current={page === n.id ? 'page' : undefined}>
               <Icon name={n.icon} size={19} /> <span>{n.label}</span>
@@ -150,27 +184,46 @@ export default function App() {
           <div className="avatar sm" aria-hidden>{user.name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase()}</div>
           <div className="who">
             <strong>{user.name}</strong>
-            <span className="muted small">{user.email}</span>
+            <span className="muted small">{employer ? user.organization : user.email}</span>
           </div>
           <button className="icon-btn" onClick={logout} title="Log out" aria-label="Log out"><Icon name="logout" /></button>
         </div>
       </aside>
 
       <main className="main">
-        {page === 'dashboard' && <Dashboard {...pageProps} />}
-        {page === 'jobs' && <Jobs {...pageProps} />}
-        {page === 'applications' && <Applications {...pageProps} />}
-        {page === 'profile' && (
-          <Profile section={profileSection} setSection={setProfileSection} actions={actions} notify={notify}
-                   onChanged={refresh} go={go} onLoggedOut={logout}
-                   onUserRenamed={(name) => setUser((u) => ({ ...u, name }))} />
+        {employer ? (
+          <>
+            {page === 'dashboard' && (
+              <EmployerDashboard {...employerProps} onOpenPosting={openEmployerPosting} onPostJob={postJob} />
+            )}
+            {page === 'postings' && (
+              <JobPosts {...employerProps} organization={user.organization} selectedId={selectedPostingId}
+                        setSelectedId={setSelectedPostingId} startNew={startNewPosting} setStartNew={setStartNewPosting} />
+            )}
+            {page === 'applicants' && <Applicants {...employerProps} />}
+            {page === 'profile' && profile}
+          </>
+        ) : (
+          <>
+            {page === 'dashboard' && <Dashboard {...pageProps} />}
+            {page === 'company-jobs' && <CompanyJobs {...pageProps} />}
+            {page === 'jobs' && <Jobs {...pageProps} />}
+            {page === 'applications' && <Applications {...pageProps} />}
+            {page === 'profile' && profile}
+          </>
         )}
       </main>
 
       {openJobId && (
         <JobDetail id={openJobId} onClose={closeJob} actions={actions} notify={notify} onChanged={refresh} />
       )}
-      {clip && <ClipModal clip={clip} onClose={closeClip} onSaved={refresh} onError={error} />}
+      {openPostingId && (
+        <PostingDetail id={openPostingId} onClose={closePosting} notify={notify} onError={error} onChanged={refresh} go={go} />
+      )}
+      {openApplicantId && (
+        <ApplicantDetail id={openApplicantId} onClose={closeApplicant} notify={notify} onError={error} onChanged={refresh} />
+      )}
+      {clip && !employer && <ClipModal clip={clip} onClose={closeClip} onSaved={refresh} onError={error} />}
 
       {toast && (
         <div key={toast.id} className={`toast ${toast.kind}`} role="status">

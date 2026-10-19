@@ -28,14 +28,25 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/config").permitAll()
                         // Protected by its own X-Cron-Secret header instead of a user login
                         .requestMatchers(HttpMethod.POST, "/api/refresh").permitAll()
+                        // Posting jobs and reviewing applicants
+                        .requestMatchers("/api/employer/**").hasRole("EMPLOYER")
+                        // Finding, tracking and applying to jobs
+                        .requestMatchers("/api/postings/**", "/api/applications/**", "/api/jobs/**", "/api/resume/**",
+                                "/api/dashboard", "/api/preferences", "/api/sync", "/api/stats").hasRole("SEEKER")
                         .requestMatchers("/api/**").authenticated()
                         // React app, static files, health check
                         .anyRequest().permitAll())
-                .exceptionHandling(e -> e.authenticationEntryPoint((request, response, ex) -> {
-                    response.setStatus(401);
-                    response.setContentType("application/json");
-                    response.getWriter().write("{\"error\":\"Please log in\"}");
-                }))
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint((request, response, ex) -> {
+                            response.setStatus(401);
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"error\":\"Please log in\"}");
+                        })
+                        .accessDeniedHandler((request, response, ex) -> {
+                            response.setStatus(403);
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"error\":\"Your account type can't do this\"}");
+                        }))
                 .addFilterBefore(new JwtAuthFilter(jwtService), UsernamePasswordAuthenticationFilter.class)
                 .build();
     }

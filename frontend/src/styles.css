@@ -699,6 +699,68 @@ select { cursor: pointer; }
 .toast.error { background: var(--red); color: #fff; }
 @keyframes rise { from { transform: translate(-50%, 10px); opacity: 0; } }
 
+/* ---------- Jobs posted on this site & employer screens ---------- */
+.s-SHORTLISTED.status-badge { background: var(--amber-soft); color: var(--amber); }
+.stage.active.s-SHORTLISTED { background: var(--amber); }
+.pipe-step.s-SHORTLISTED { background: var(--amber-soft); }
+.pill.blue { background: var(--primary-soft); color: var(--primary); }
+.source-badge.src-here { background: var(--primary-soft); color: var(--primary); }
+.org-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-weight: 800;
+  font-size: 1rem;
+}
+.wide-modal { width: min(680px, 100%); }
+.range-row { align-items: center; gap: 8px; }
+.range-row input { min-width: 0; }
+.back-link { margin-bottom: 10px; }
+.applicant-list { display: flex; flex-direction: column; }
+.applicant-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 12px 8px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 8px;
+}
+.applicant-row:last-child { border-bottom: 0; }
+.applicant-row:hover { background: var(--surface-2); }
+.applicant-main { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.applicant-main > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.applicant-count {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  line-height: 1.1;
+}
+.applicant-count strong { font-size: 1.15rem; }
+.applicant-count span { font-size: 0.68rem; font-weight: 600; }
+.contact-grid { display: flex; flex-wrap: wrap; gap: 8px 18px; font-weight: 600; }
+.contact-grid a { color: var(--primary); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+.contact-grid a:hover { text-decoration: underline; }
+.direct-apps { margin-bottom: 20px; }
+.mini-job.direct-app { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
+.mini-job.direct-app > span:first-child { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 1100px) {
   .dash-grid { grid-template-columns: 1fr; }
@@ -741,4 +803,5 @@ select { cursor: pointer; }
   .page-head > .btn { width: 100%; }
   .toast { bottom: 80px; }
   .profile-head .avatar { width: 52px; height: 52px; font-size: 1.1rem; }
+  .applicant-row { gap: 10px; padding: 12px 4px; }
 }

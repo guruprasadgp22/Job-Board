@@ -4,7 +4,7 @@ import { api } from '../api'
 export default function AuthPage({ onAuthenticated, pendingClip }) {
   const [mode, setMode] = useState('login')
   const [allowRegistration, setAllowRegistration] = useState(true)
-  const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '', role: 'SEEKER', organization: '' })
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -29,7 +29,10 @@ export default function AuthPage({ onAuthenticated, pendingClip }) {
     setBusy(true)
     try {
       const res = mode === 'register'
-        ? await api.register({ name: form.name, email: form.email, password: form.password })
+        ? await api.register({
+          name: form.name, email: form.email, password: form.password, role: form.role,
+          organization: form.role === 'EMPLOYER' ? form.organization : undefined,
+        })
         : await api.login({ email: form.email, password: form.password })
       onAuthenticated(res, mode === 'register')
     } catch (err) {
@@ -39,6 +42,7 @@ export default function AuthPage({ onAuthenticated, pendingClip }) {
   }
 
   const isRegister = mode === 'register'
+  const hiring = isRegister && form.role === 'EMPLOYER'
 
   return (
     <div className="center auth-page">
@@ -46,12 +50,21 @@ export default function AuthPage({ onAuthenticated, pendingClip }) {
         <div className="auth-intro">
           <div className="brand big"><span className="logo" aria-hidden>JB</span> Job Board</div>
           <h2 className="tagline">Jobs that match your resume, in one place.</h2>
-          <ul className="benefits">
-            <li><span>1</span> Upload your resume and we find your skills</li>
-            <li><span>2</span> We search job sites and rank jobs by how well you match</li>
-            <li><span>3</span> Track every application, from saved to offer</li>
-            <li><span>4</span> Closed jobs disappear automatically</li>
-          </ul>
+          {hiring ? (
+            <ul className="benefits">
+              <li><span>1</span> Post jobs for your organization</li>
+              <li><span>2</span> Candidates apply with their resume in one click</li>
+              <li><span>3</span> See how well each applicant's skills match</li>
+              <li><span>4</span> Move people from shortlisted to offer</li>
+            </ul>
+          ) : (
+            <ul className="benefits">
+              <li><span>1</span> Upload your resume and we find your skills</li>
+              <li><span>2</span> Apply to jobs posted here, and see jobs from other sites ranked by match</li>
+              <li><span>3</span> Track every application, from saved to offer</li>
+              <li><span>4</span> Closed jobs disappear automatically</li>
+            </ul>
+          )}
         </div>
 
         <form className="card auth-card" onSubmit={submit} noValidate={false}>
@@ -68,10 +81,29 @@ export default function AuthPage({ onAuthenticated, pendingClip }) {
           {pendingClip && <p className="notice">Log in to save the job you just clipped.</p>}
 
           {isRegister && (
-            <label className="field">
-              <span>Full name</span>
-              <input required autoComplete="name" value={form.name} onChange={set('name')} placeholder="Your name" />
-            </label>
+            <>
+              <div className="field">
+                <span>I want to</span>
+                <div className="segmented" role="radiogroup" aria-label="Account type">
+                  <button type="button" role="radio" aria-checked={!hiring} className={!hiring ? 'active' : ''}
+                          onClick={() => setForm({ ...form, role: 'SEEKER' })}>Find a job</button>
+                  <button type="button" role="radio" aria-checked={hiring} className={hiring ? 'active' : ''}
+                          onClick={() => setForm({ ...form, role: 'EMPLOYER' })}>Hire people</button>
+                </div>
+              </div>
+              <label className="field">
+                <span>Full name</span>
+                <input required autoComplete="name" value={form.name} onChange={set('name')} placeholder="Your name" />
+              </label>
+              {hiring && (
+                <label className="field">
+                  <span>Organization</span>
+                  <input required autoComplete="organization" value={form.organization} onChange={set('organization')}
+                         placeholder="Company name" />
+                  <small className="help">Shown on every job you post</small>
+                </label>
+              )}
+            </>
           )}
           <label className="field">
             <span>Email</span>

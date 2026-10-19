@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, STATUS_LABELS, STATUSES, timeAgo } from '../api'
+import { api, SEEKER_APPLICATION_LABELS, STATUS_LABELS, STATUSES, timeAgo } from '../api'
 import { Deadline, SourceBadge } from '../components/JobCard'
 import { PageLoading } from './Dashboard'
 
@@ -12,16 +12,18 @@ const COLUMNS = [
 ]
 
 /** Board view of your applications: one column per stage; move a job with the dropdown on its card. */
-export default function Applications({ refreshKey, actions, onOpen, go }) {
+export default function Applications({ refreshKey, actions, onOpen, onOpenPosting, go }) {
   const [jobs, setJobs] = useState(null)
+  const [direct, setDirect] = useState(null)
 
   useEffect(() => {
     api.listJobs({ status: COLUMNS.map((c) => c.status), sort: 'newest', size: 100 })
       .then((d) => setJobs(d.items))
       .catch(actions.error)
+    api.myApplications().then(setDirect).catch(actions.error)
   }, [refreshKey, actions.error])
 
-  if (!jobs) return <PageLoading />
+  if (!jobs || !direct) return <PageLoading />
 
   const move = (job, status) => {
     setJobs(jobs.map((j) => (j.id === job.id ? { ...j, status } : j)))
@@ -37,11 +39,36 @@ export default function Applications({ refreshKey, actions, onOpen, go }) {
         </div>
       </header>
 
-      {jobs.length === 0 ? (
+      {direct.length > 0 && (
+        <section className="card direct-apps">
+          <div className="card-head">
+            <h2>Applied on Job Board</h2>
+            <span className="muted small">The employer updates the stage</span>
+          </div>
+          <ul className="mini-list">
+            {direct.map((a) => (
+              <li key={a.id}>
+                <button className="mini-job direct-app" onClick={() => onOpenPosting(a.postingId)}>
+                  <span>
+                    <strong>{a.title}</strong>
+                    <span className="muted small">
+                      {[a.organization, a.location].filter(Boolean).join(' · ')} · applied {timeAgo(a.appliedAt)}
+                      {!a.postingOpen && ' · closed'}
+                    </span>
+                  </span>
+                  <span className={`status-badge s-${a.status}`}>{SEEKER_APPLICATION_LABELS[a.status]}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {jobs.length === 0 && direct.length > 0 ? null : jobs.length === 0 ? (
         <div className="card empty big-empty">
           <p><strong>Nothing here yet</strong></p>
           <p className="muted">Click <b>Save</b> or <b>Apply</b> on a job and it will appear on this board.</p>
-          <button className="btn primary" onClick={() => go('jobs')}>Browse matched jobs</button>
+          <button className="btn primary" onClick={() => go('company-jobs')}>Browse company jobs</button>
         </div>
       ) : (
         <div className="board">

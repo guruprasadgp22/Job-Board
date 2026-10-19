@@ -73,6 +73,54 @@ export const api = {
   sync: () => request('POST', '/sync'),
   cleanup: () => request('POST', '/cleanup'),
   stats: () => request('GET', '/stats'),
+
+  // Job seekers: jobs employers posted on this site
+  browsePostings: (params) => request('GET', `/postings?${query(params)}`),
+  getPosting: (id) => request('GET', `/postings/${id}`),
+  applyToPosting: (id, coverNote) => request('POST', `/postings/${id}/apply`, { coverNote }),
+  withdrawApplication: (id) => request('DELETE', `/postings/${id}/apply`),
+  myApplications: () => request('GET', '/applications'),
+
+  // Employers
+  employerDashboard: () => request('GET', '/employer/dashboard'),
+  myPostings: () => request('GET', '/employer/postings'),
+  getMyPosting: (id) => request('GET', `/employer/postings/${id}`),
+  createPosting: (posting) => request('POST', '/employer/postings', posting),
+  updatePosting: (id, posting) => request('PUT', `/employer/postings/${id}`, posting),
+  closePosting: (id) => request('POST', `/employer/postings/${id}/close`),
+  reopenPosting: (id) => request('POST', `/employer/postings/${id}/reopen`),
+  deletePosting: (id) => request('DELETE', `/employer/postings/${id}`),
+  postingApplicants: (id) => request('GET', `/employer/postings/${id}/applicants`),
+  allApplicants: () => request('GET', '/employer/applicants'),
+  getApplicant: (id) => request('GET', `/employer/applicants/${id}`),
+  updateApplicant: (id, patch) => request('PATCH', `/employer/applicants/${id}`, patch),
+}
+
+export const APPLICANT_STATUSES = ['APPLIED', 'SHORTLISTED', 'INTERVIEWING', 'OFFER', 'REJECTED']
+
+export const APPLICANT_LABELS = {
+  APPLIED: 'New',
+  SHORTLISTED: 'Shortlisted',
+  INTERVIEWING: 'Interviewing',
+  OFFER: 'Offer',
+  REJECTED: 'Rejected',
+}
+
+/** What a job seeker sees for each stage the employer sets. */
+export const SEEKER_APPLICATION_LABELS = {
+  APPLIED: 'Applied',
+  SHORTLISTED: 'Shortlisted',
+  INTERVIEWING: 'Interviewing',
+  OFFER: 'Offer',
+  REJECTED: 'Not selected',
+}
+
+export const EMPLOYMENT_TYPES = ['Full-time', 'Part-time', 'Contract', 'Internship']
+
+export function experienceLabel(min, max) {
+  if (min == null && max == null) return ''
+  if (min != null && max != null) return min === max ? `${min} yrs` : `${min}–${max} yrs`
+  return min != null ? `${min}+ yrs` : `Up to ${max} yrs`
 }
 
 export const STATUSES = ['NEW', 'SAVED', 'APPLIED', 'INTERVIEWING', 'OFFER', 'REJECTED']
