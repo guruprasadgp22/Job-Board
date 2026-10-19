@@ -1,0 +1,30 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: job-board
+    runtime: docker
+    plan: free
+    region: ohio           # same region as the Neon database (us-east-2)
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: DB_URL          # e.g. jdbc:postgresql://ep-xxx.aws.neon.tech/neondb?sslmode=require
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: JWT_SECRET      # signs login tokens; Render generates a random value
+        generateValue: true
+      - key: CRON_SECRET     # used by the GitHub Actions refresh job; copy it into the GitHub secret
+        generateValue: true
+      - key: ALLOW_REGISTRATION  # set to false after creating your account to block sign-ups
+        value: "true"
+      - key: JSEARCH_API_KEY # optional: LinkedIn/Indeed/Naukri/Glassdoor jobs via Google for Jobs
+        sync: false
+      - key: JSEARCH_URL     # https://jsearch.p.rapidapi.com/search (RapidAPI) or https://api.openwebninja.com/jsearch/search
+        value: https://jsearch.p.rapidapi.com/search
+      - key: ADZUNA_APP_ID   # optional
+        sync: false
+      - key: ADZUNA_APP_KEY  # optional
+        sync: false

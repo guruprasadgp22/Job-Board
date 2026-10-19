@@ -1,0 +1,25 @@
+# Free Render instances sleep when idle, so the in-app schedule can't be relied on.
+# This wakes the app every 6 hours and runs "find new jobs" (for every user) + "delete closed jobs".
+name: Refresh jobs
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake the app
+        run: |
+          for i in $(seq 1 20); do
+            curl -fs --max-time 30 "${{ secrets.APP_URL }}/actuator/health" && exit 0
+            sleep 15
+          done
+          exit 1
+      - name: Sync and clean up
+        run: |
+          curl -fsS --max-time 900 -X POST \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/refresh"
